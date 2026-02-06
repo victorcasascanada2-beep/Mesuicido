@@ -33,7 +33,7 @@ def configurar_herramientas():
 
 def ejecutar_busqueda(modelo_tractor):
     try:
-        model = GenerativeModel("gemini-1.5-pro") 
+        model = GenerativeModel("gemini-2.5-pro") 
         prompt = f"Busca ofertas de {modelo_tractor} en España. Dame una tabla con Modelo, Precio y Link."
         
         # El spinner debería dejar de girar y soltar la respuesta
