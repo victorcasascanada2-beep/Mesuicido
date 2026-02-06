@@ -1,35 +1,34 @@
 import streamlit as st
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 from google.oauth2 import service_account
-from google.cloud import aiplatform
 
-st.title("🔍 Escáner de Modelos Disponibles")
+st.title("🚜 Buscador Agrícola (Modo EU)")
 
+# 1. CARGA DE CREDENCIALES
 if "google" in st.secrets:
     creds_info = dict(st.secrets["google"])
-    creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
-    credentials = service_account.Credentials.from_service_account_info(creds_info)
-    
-    # Probamos con 'europe-west1' o 'us-central1'
-    REGION = "us-central1" 
+    # Limpiamos la clave por si las tres comillas metieron caracteres extra
+    if "private_key" in creds_info:
+        creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
     
     try:
-        vertexai.init(project=creds_info["project_id"], location=REGION, credentials=credentials)
-        st.success(f"Conectado al proyecto: {creds_info['project_id']}")
+        credentials = service_account.Credentials.from_service_account_info(creds_info)
         
-        # Intentamos listar modelos o probar los más comunes
-        test_models = ["gemini-1.0-pro", "gemini-1.5-pro-002", "gemini-pro"]
+        # 2. INICIALIZACIÓN EN LA REGIÓN CORRECTA
+        # Usamos 'eu' porque es lo que configuraste en Agent Builder
+        vertexai.init(project=creds_info["project_id"], location="eu", credentials=credentials)
         
-        st.subheader("Probando disponibilidad:")
-        for m_name in test_models:
-            try:
-                model = GenerativeModel(m_name)
-                # Un test rápido sin búsqueda, solo texto
-                response = model.generate_content("test", generation_config={"max_output_tokens": 5})
-                st.write(f"✅ **{m_name}**: DISPONIBLE")
-            except Exception as e:
-                st.write(f"❌ **{m_name}**: No disponible ({e})")
-                
+        st.success("✅ Conectado a Google Cloud (Región: EU)")
+        
+        # 3. PRUEBA DE MOTOR
+        if st.button("Probar conexión con Gemini 1.5 Pro"):
+            model = GenerativeModel("gemini-1.5-pro")
+            # Respuesta rápida para validar
+            response = model.generate_content("Di 'Sistema EU listo'")
+            st.write(f"Respuesta: **{response.text}**")
+            
     except Exception as e:
-        st.error(f"Error general: {e}")
+        st.error(f"Error de configuración: {e}")
+else:
+    st.error("No se encontraron los Secrets [google]")
