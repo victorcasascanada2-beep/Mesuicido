@@ -1,38 +1,38 @@
 import streamlit as st
 import vertexai
-from google.oauth2 import service_account
-from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
+import inspect
 
-st.title("🚜 Buscador Agrícola 2.5 Pro")
+st.title("🛠 Mapeo de Estructura Vertex AI")
 
-if "google" in st.secrets:
+def explorar_libreria():
+    resultados = {}
     try:
-        creds_info = dict(st.secrets["google"])
-        if "private_key" in creds_info:
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+        # 1. Intentamos importar el módulo base
+        import vertexai.generative_models as gm
+        resultados["Modo"] = "Módulo cargado"
         
-        credentials = service_account.Credentials.from_service_account_info(creds_info)
+        # 2. Buscamos todas las clases disponibles que suenen a Búsqueda o Tool
+        todas_las_clases = [name for name, obj in inspect.getmembers(gm) if inspect.isclass(obj) or inspect.ismodule(obj)]
+        resultados["Clases_Disponibles"] = todas_las_clases
         
-        # Sincronizamos con us-central1 (donde tu consola muestra el consumo)
-        vertexai.init(project=creds_info["project_id"], location="us-central1", credentials=credentials)
-        st.success("✅ Sistema conectado.")
-
-        query = st.text_input("¿Qué tractor buscamos?", value="John Deere 6155R")
-
-        if st.button("BUSCAR OFERTAS"):
-            with st.spinner("Rastreando portales..."):
-                # FORMA CORRECTA 2026: Usamos el objeto directo que importamos arriba
-                search_tool = Tool.from_google_search_retrieval(
-                    google_search_retrieval=GoogleSearchRetrieval()
-                )
-                
-                model = GenerativeModel("gemini-2.5-pro")
-                
-                # Le pedimos resultados específicos de España/Europa como configuramos
-                prompt = f"Busca ofertas de {query} en España. Dame una tabla con Modelo, Precio y Link."
-                
-                response = model.generate_content(prompt, tools=[search_tool])
-                st.markdown(response.text)
-
+        # 3. Buscamos específicamente herramientas de 'grounding' (donde suele vivir la búsqueda)
+        if hasattr(gm, 'grounding'):
+            resultados["Grounding_Submodule"] = dir(gm.grounding)
+            
+        return resultados
     except Exception as e:
-        st.error(f"Error técnico: {e}")
+        return {"Error": str(e)}
+
+# Ejecución y visualización
+analisis = explorar_libreria()
+
+if "Error" in analisis:
+    st.error(f"Fallo crítico en la librería: {analisis['Error']}")
+    st.info("Sugerencia: Cambia 'google-cloud-aiplatform' por 'google-cloud-aiplatform>=1.70.0' en requirements.txt")
+else:
+    st.success("✅ Estructura mapeada con éxito")
+    st.write("### Nombres de variables reales en tu servidor:")
+    st.json(analisis)
+
+st.divider()
+st.write("Copia el bloque de texto de arriba y lo usamos para escribir la función de búsqueda definitiva.")
