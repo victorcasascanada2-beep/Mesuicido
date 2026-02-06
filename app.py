@@ -3,41 +3,37 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
 # --- CONFIGURACIÓN DE GOOGLE CLOUD ---
-# Datos extraídos de tus capturas
-# --- CONFIGURACIÓN DE GOOGLE CLOUD ---
 PROJECT_ID = "236500839928" 
-# Para Vertex AI usamos una región específica de Europa
-LOCATION_VERTEX = "europe-west1" 
-# Para el buscador mantenemos el ID exacto de tu captura
+# Usamos una región específica para inicializar el modelo Gemini
+REGION_MODELO = "europe-west1" 
+# Tu ID de motor exacto que vive en la multirregión 'eu'
 ENGINE_ID = "projects/236500839928/locations/eu/collections/default_collection/engines/tasador-maquinaria-v1_1770400616700"
 
-# Inicializamos con la región completa soportada
-vertexai.init(project=PROJECT_ID, location=LOCATION_VERTEX)
+# Inicialización correcta para Europa
+vertexai.init(project=PROJECT_ID, location=REGION_MODELO)
 
 def configurar_herramientas():
-    """Conecta con tu App de Vertex AI Search en Europa"""
+    """Conecta con tu motor de búsqueda en la ubicación 'eu'"""
     search_tool = Tool.from_retrieval(
         retrieval=grounding.Retrieval(
             vertex_ai_search=grounding.VertexAISearch(
                 datastore=ENGINE_ID,
-                location=LOCATION
+                location="eu"  # Aquí usamos 'eu' tal cual sale en tu pantalla de API
             )
         )
     )
     return search_tool
 
 def ejecutar_busqueda(modelo_tractor):
-    """Lógica de tasación con Gemini 2.5 Pro"""
+    """Ejecuta la tasación usando Gemini 1.5 Pro"""
     try:
         herramientas = [configurar_herramientas()]
-        # Usamos el nombre oficial correcto para evitar el error de modelo
-        model = GenerativeModel("gemini-2.5-pro") 
+        model = GenerativeModel("gemini-1.5-pro") 
         
         prompt = f"""
-        Eres un experto tasador de maquinaria agrícola en España.
-        Busca ofertas actuales de: {modelo_tractor}
-        Extrae precio, horas, año y enlace de Milanuncios y Agriaffaires.
-        Genera una tabla comparativa y una conclusión de precio de mercado.
+        Busca ofertas de {modelo_tractor} en España usando tus fuentes (Milanuncios, Agriaffaires). 
+        Dame una tabla con: Modelo, Precio, Horas y Link. 
+        Calcula un precio medio al final.
         """
         
         response = model.generate_content(prompt, tools=herramientas)
@@ -45,19 +41,16 @@ def ejecutar_busqueda(modelo_tractor):
     except Exception as e:
         return f"⚠️ Error en la consulta: {str(e)}"
 
-# --- INTERFAZ DE USUARIO ---
-def main():
-    st.set_page_config(page_title="Tasador IA - Maquinaria", layout="wide")
-    st.title("🚜 Tasador Pro de Maquinaria")
-    
-    modelo = st.text_input("Introduce el modelo del tractor:")
-    if st.button("Buscar y Tasar"):
-        if modelo:
-            with st.spinner("Consultando fuentes en España..."):
-                resultado = ejecutar_busqueda(modelo)
-                st.markdown(resultado)
-        else:
-            st.warning("Escribe un modelo primero.")
+# --- INTERFAZ STREAMLIT ---
+st.set_page_config(page_title="Tasador Agrícola", layout="centered")
+st.title("🚜 Tasador de Tractores")
 
-if __name__ == "__main__":
-    main()
+modelo = st.text_input("¿Qué modelo quieres tasar?", placeholder="Ej: John Deere 6150M")
+
+if st.button("Buscar Ofertas"):
+    if modelo:
+        with st.spinner("Buscando en Milanuncios y Agriaffaires..."):
+            resultado = ejecutar_busqueda(modelo)
+            st.markdown(resultado)
+    else:
+        st.warning("Introduce un modelo para empezar.")
