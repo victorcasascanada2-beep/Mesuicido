@@ -13,17 +13,19 @@ ENGINE_ID = "projects/236500839928/locations/eu/collections/default_collection/e
 vertexai.init(project=PROJECT_ID, location=REGION_MODELO)
 
 def configurar_herramientas():
-    """Conecta con tu motor de búsqueda en la ubicación 'eu'"""
+    """Conexión ultra-segura desglosando los datos para evitar errores de ID"""
     search_tool = Tool.from_retrieval(
         retrieval=grounding.Retrieval(
             vertex_ai_search=grounding.VertexAISearch(
-                datastore=ENGINE_ID,
-                location="eu"  # Aquí usamos 'eu' tal cual sale en tu pantalla de API
+                # En lugar de la ruta larga, usamos solo el ID final
+                datastore="tasador-maquinaria-v1_1770400616700", 
+                # Le decimos explícitamente el proyecto y la ubicación
+                project="236500839928",
+                location="eu" 
             )
         )
     )
     return search_tool
-
 def ejecutar_busqueda(modelo_tractor):
     """Ejecuta la tasación usando Gemini 1.5 Pro"""
     try:
