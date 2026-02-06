@@ -1,4 +1,5 @@
-google-cloud-aiplatform==1.70.0
-google-auth==2.23.0
-streamlit==1.30.0
-panda
+streamlit
+pandas
+google-cloud-aiplatform>=1.70.0
+google-auth-oauthlib
+google-auth-httplib2
