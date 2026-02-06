@@ -16,7 +16,7 @@ PROJECT_ID = "subida-fotos-drive"
 LOCATION = "us-central1" # Región de la IA
 # Tu nuevo ID de almacén que acabamos de crear
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877" 
-LOCATION = "europe-west1"
+DATA_STORE_LOCATION = "europe-west1"
 
 vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
 
