@@ -12,7 +12,7 @@ else:
     st.stop()
 
 # --- 2. CONFIGURACIÓN ÚNICA (He puesto tus IDs exactos) ---
-PROJECT_ID = "tasador-maquinaria" 
+PROJECT_ID = "subida-fotos-drive" 
 LOCATION = "europe-west1" # Región de la IA
 # Tu nuevo ID de almacén que acabamos de crear
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877" 
