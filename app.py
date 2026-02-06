@@ -1,38 +1,53 @@
 import streamlit as st
 import vertexai
-import inspect
+from google.oauth2 import service_account
 
-st.title("🛠 Mapeo de Estructura Vertex AI")
+# Importamos las piezas base confirmadas
+from vertexai.generative_models import GenerativeModel, Tool
 
-def explorar_libreria():
-    resultados = {}
+st.title("🚜 Localizador de Maquinaria")
+
+# 1. Configuración de Variables
+PROJECT_ID = st.secrets["google"]["project_id"]
+LOCATION = "us-central1" # Donde tienes el consumo activo
+
+def configurar_herramientas():
+    """Configura el buscador usando la ruta exacta hallada en tu servidor"""
+    import vertexai.generative_models as gm
+    # Usamos la ruta confirmada: gm.grounding.GoogleSearchRetrieval
+    search_query_tool = Tool.from_google_search_retrieval(
+        google_search_retrieval=gm.grounding.GoogleSearchRetrieval()
+    )
+    return search_query_tool
+
+def ejecutar_busqueda(modelo_tractor):
+    """Lógica de búsqueda con Gemini 2.5 Pro"""
     try:
-        # 1. Intentamos importar el módulo base
-        import vertexai.generative_models as gm
-        resultados["Modo"] = "Módulo cargado"
+        herramientas = [configurar_herramientas()]
+        model = GenerativeModel("gemini-2.5-pro")
         
-        # 2. Buscamos todas las clases disponibles que suenen a Búsqueda o Tool
-        todas_las_clases = [name for name, obj in inspect.getmembers(gm) if inspect.isclass(obj) or inspect.ismodule(obj)]
-        resultados["Clases_Disponibles"] = todas_las_clases
+        prompt = f"Busca ofertas actuales de {modelo_tractor} en España. Incluye precio y link."
         
-        # 3. Buscamos específicamente herramientas de 'grounding' (donde suele vivir la búsqueda)
-        if hasattr(gm, 'grounding'):
-            resultados["Grounding_Submodule"] = dir(gm.grounding)
-            
-        return resultados
+        response = model.generate_content(prompt, tools=herramientas)
+        return response.text
     except Exception as e:
-        return {"Error": str(e)}
+        return f"Error en la consulta: {e}"
 
-# Ejecución y visualización
-analisis = explorar_libreria()
-
-if "Error" in analisis:
-    st.error(f"Fallo crítico en la librería: {analisis['Error']}")
-    st.info("Sugerencia: Cambia 'google-cloud-aiplatform' por 'google-cloud-aiplatform>=1.70.0' en requirements.txt")
-else:
-    st.success("✅ Estructura mapeada con éxito")
-    st.write("### Nombres de variables reales en tu servidor:")
-    st.json(analisis)
-
-st.divider()
-st.write("Copia el bloque de texto de arriba y lo usamos para escribir la función de búsqueda definitiva.")
+# 2. Interfaz de Usuario
+if "google" in st.secrets:
+    try:
+        creds = dict(st.secrets["google"])
+        creds["private_key"] = creds["private_key"].replace("\\n", "\n")
+        credentials = service_account.Credentials.from_service_account_info(creds)
+        
+        vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=credentials)
+        st.success(f"✅ Conectado a {LOCATION} con Gemini 2.5 Pro")
+        
+        tractor = st.text_input("Introduce marca y modelo:", "John Deere 6155R")
+        if st.button("BUSCAR AHORA"):
+            with st.spinner("Buscando en tiempo real..."):
+                resultado = ejecutar_busqueda(tractor)
+                st.markdown(resultado)
+                
+    except Exception as e:
+        st.error(f"Fallo de inicialización: {e}")
