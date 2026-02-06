@@ -16,7 +16,7 @@ PROJECT_ID = "subida-fotos-drive"
 LOCATION = "us-central1" # Región de la IA
 # Tu nuevo ID de almacén que acabamos de crear
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877" 
-DATA_STORE_LOCATION = "global" 
+LOCATION = "europe-west1"
 
 vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
 
@@ -39,7 +39,7 @@ tools = [
 
 # --- 4. MODELO ---
 model = GenerativeModel(
-    model_name="gemini-2.0-pro", # Flash es más rápido para probar
+    model_name="gemini-2.5-pro", # Flash es más rápido para probar
     tools=tools
 )
 
