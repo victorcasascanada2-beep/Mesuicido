@@ -1,12 +1,10 @@
 import streamlit as st
 import vertexai
-from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 from google.oauth2 import service_account
+from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 
-# 1. TÍTULO DE LA APP
-st.title("🚜 Buscador Agrícola (Paso 1)")
+st.title("🚜 Buscador Agrícola (Sincronizado EU)")
 
-# 2. CONEXIÓN (La que funcionó en el PDF)
 if "google" in st.secrets:
     try:
         creds_info = dict(st.secrets["google"])
@@ -15,30 +13,26 @@ if "google" in st.secrets:
         
         credentials = service_account.Credentials.from_service_account_info(creds_info)
         
-        # Inicializamos en la región confirmada
-        vertexai.init(
-            project=creds_info["project_id"], 
-            location="europe-west1", 
-            credentials=credentials
-        )
-        st.success("✅ Conexión con europe-west1 establecida.")
+        # Aquí usamos 'eu' porque es donde elegiste el API de búsqueda
+        vertexai.init(project=creds_info["project_id"], location="eu", credentials=credentials)
+        st.success("✅ Conexión establecida con la región de búsqueda (EU)")
     except Exception as e:
-        st.error(f"Error en la conexión: {e}")
+        st.error(f"Error de conexión: {e}")
         st.stop()
 
-# 3. BÚSQUEDA SIMPLE
-query = st.text_input("Escribe marca y modelo:", value="John Deere 6175M")
+query = st.text_input("Modelo de tractor a buscar:", value="John Deere 6155R")
 
-if st.button("BUSCAR"):
-    with st.spinner("Buscando ofertas reales..."):
+if st.button("BUSCAR EN EUROPA"):
+    with st.spinner("Conectando con el motor de búsqueda europeo..."):
         try:
-            # Añadimos la herramienta de Google Search
+            # Esta es la herramienta que configuramos en Europa
             search_tool = Tool.from_google_search_retrieval(GoogleSearchRetrieval())
             model = GenerativeModel("gemini-2.5-pro")
             
-            prompt = f"Busca ofertas de {query}. Dame una lista con precios y enlaces."
-            
-            response = model.generate_content(prompt, tools=[search_tool])
+            response = model.generate_content(
+                f"Busca ofertas de {query} en portales europeos. Dame precios y enlaces.",
+                tools=[search_tool]
+            )
             st.markdown(response.text)
         except Exception as e:
-            st.error(f"Error en la búsqueda: {e}")
+            st.error(f"Aviso: Si ves un error de región, es que Gemini 2.5 aún no está disponible en 'eu' para tu cuenta. Error: {e}")
