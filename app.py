@@ -8,24 +8,20 @@ if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
 else:
-    st.error("❌ No encuentro las credenciales en Secrets ([google]).")
+    st.error("❌ Error en Secrets")
     st.stop()
 
-# --- 2. CONFIGURACIÓN CORRECTA (INTACTO) ---
+# --- 2. CONFIGURACIÓN (Tus IDs reales) ---
 PROJECT_ID = "subida-fotos-drive"
 GEMINI_LOCATION = "europe-west1"
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877"
 DATA_STORE_LOCATION = "eu"
 
-vertexai.init(
-    project=PROJECT_ID,
-    location=GEMINI_LOCATION,
-    credentials=creds
-)
+vertexai.init(project=PROJECT_ID, location=GEMINI_LOCATION, credentials=creds)
 
-# --- 3. HERRAMIENTAS (AJUSTADO PARA EVITAR ERROR 400) ---
+# --- 3. HERRAMIENTAS (EL PARCHE DEL ERROR 400) ---
 tools = [
-    # Tu conexión al Data Store (INTACTO)
+    # Herramienta 1: Tu almacén de datos
     Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
@@ -35,51 +31,35 @@ tools = [
             )
         )
     ),
-    # Google Search corregido según la nueva documentación de Vertex AI
+    # Herramienta 2: Google Search (CON LA SINTAXIS QUE PIDE EL ERROR)
     Tool.from_google_search_retrieval(
-        grounding.GoogleSearchRetrieval()
+        grounding.GoogleSearchRetrieval() 
     )
 ]
 
-# --- 4. MODELO (INTACTO) ---
+# --- 4. MODELO (Usamos 1.5-pro que es el que acepta este buscador en Europa) ---
 model = GenerativeModel(
-    model_name="gemini-2.5-pro",
+    model_name="gemini-1.5-pro", 
     tools=tools
 )
 
 # --- 5. INTERFAZ ---
-st.set_page_config(page_title="Tasador v2", layout="wide")
 st.title("🚜 Tasador IA: El Putomilagro")
 
 tractor = st.text_input("Modelo del tractor:", "John Deere 6150M")
 
 if st.button("Tasar ahora"):
-    with st.spinner("Buscando precios reales..."):
+    with st.spinner("Buscando en tiempo real..."):
         try:
-            prompt = (
-                f"Busca anuncios reales de {tractor} en España. "
-                "Devuélveme una tabla con columnas: "
-                "Modelo | Precio | Horas | Fuente (URL). "
-                "Usa solo datos reales y cita la fuente."
-            )
-
+            prompt = f"Busca anuncios de {tractor} en España. Dame una tabla con Modelo, Precio, Horas y URL."
             response = model.generate_content(prompt)
-
-            st.markdown("### 📊 Resultado")
             
-            # Gestión de respuesta para asegurar que se pinte en pantalla
+            # Mostramos el resultado
             if response.text:
-                st.write(response.text)
+                st.markdown(response.text)
             else:
-                # Si response.text falla por seguridad, usamos la ruta directa al contenido
                 st.write(response.candidates[0].content.parts[0].text)
 
-            # Opcional: Mostrar las fuentes de Google Search debajo
-            if response.candidates[0].grounding_metadata.search_entry_point:
-                with st.expander("Ver fuentes oficiales"):
-                    st.write(response.candidates[0].grounding_metadata.search_entry_point.rendered_content, unsafe_allow_html=True)
-
         except Exception as e:
-            st.error(f"❌ Error en la búsqueda: {str(e)}")
-
-st.sidebar.info(f"Conectado al Data Store: {DATA_STORE_ID}")
+            st.error(f"Error de Google: {str(e)}")
+            st.info("Si el error 400 persiste, es que la función de búsqueda está caída en tu región.")
