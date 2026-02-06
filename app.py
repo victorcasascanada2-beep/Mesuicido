@@ -4,12 +4,15 @@ from vertexai.generative_models import GenerativeModel, Tool, grounding
 
 # --- CONFIGURACIÓN DE GOOGLE CLOUD ---
 # Datos extraídos de tus capturas
+# --- CONFIGURACIÓN DE GOOGLE CLOUD ---
 PROJECT_ID = "236500839928" 
-LOCATION = "eu" 
+# Para Vertex AI usamos una región específica de Europa
+LOCATION_VERTEX = "europe-west1" 
+# Para el buscador mantenemos el ID exacto de tu captura
 ENGINE_ID = "projects/236500839928/locations/eu/collections/default_collection/engines/tasador-maquinaria-v1_1770400616700"
 
-# Inicializamos Vertex AI fuera de las funciones para evitar errores de bloque
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+# Inicializamos con la región completa soportada
+vertexai.init(project=PROJECT_ID, location=LOCATION_VERTEX)
 
 def configurar_herramientas():
     """Conecta con tu App de Vertex AI Search en Europa"""
