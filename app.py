@@ -29,10 +29,9 @@ vertexai.init(
 
 # --- 3. HERRAMIENTAS (FORMA COMPATIBLE CON SDK ACTUAL) ---
 tools = [
-    # Google Search (nuevo contrato, compatible)
-    Tool(google_search={}),
-
-    # Vertex AI Search (RAG)
+    Tool.from_dict({
+        "google_search": {}
+    }),
     Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
@@ -46,6 +45,7 @@ tools = [
         )
     ),
 ]
+
 
 # --- 4. MODELO ---
 model = GenerativeModel(
