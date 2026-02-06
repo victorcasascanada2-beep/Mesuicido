@@ -15,7 +15,7 @@ else:
 # --- 2. CONFIGURACIÓN ---
 PROJECT_ID = "236500839928" 
 REGION_MODELO = "europe-west1" 
-DATA_STORE_ID = "tasador-maquinaria-v1_1770400616700" 
+DATA_STORE_ID = "tasador-maquinaria-v1_1770401678792" 
 
 # Inicializamos con tus credenciales reales
 vertexai.init(project=PROJECT_ID, location=REGION_MODELO, credentials=creds)
