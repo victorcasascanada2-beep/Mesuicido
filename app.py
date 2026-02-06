@@ -4,50 +4,52 @@ from google.oauth2 import service_account
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
 # --- 1. CREDENCIALES ---
+# Se asume que en Streamlit Secrets tienes:
+# [google]
+# type = "service_account"
+# project_id = "subida-fotos-drive"
+# ...
+
 if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
 else:
-    st.error("❌ No encuentro las credenciales en Secrets.")
+    st.error("❌ No encuentro las credenciales en Secrets ([google]).")
     st.stop()
 
-# --- 2. CONFIGURACIÓN ---
+# --- 2. CONFIGURACIÓN CORRECTA ---
+# ID del proyecto (NO el número, sino el ID)
 PROJECT_ID = "subida-fotos-drive"
 
-# Gemini 2.5 Pro SÍ está disponible en Europa
-LOCATION = "europe-west1"
+# 👉 Gemini (modelos generativos) en Europa
+GEMINI_LOCATION = "europe-west1"
 
-# Vertex AI Search SIEMPRE va en global
+# 👉 Vertex AI Search / Data Store
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877"
-DATA_STORE_LOCATION = "global"
+DATA_STORE_LOCATION = "eu"  # ❌ NO global, según tu consola
 
+# Inicialización de Vertex AI
 vertexai.init(
     project=PROJECT_ID,
-    location=LOCATION,
+    location=GEMINI_LOCATION,
     credentials=creds
 )
 
-# --- 3. HERRAMIENTAS (FORMA COMPATIBLE CON SDK ACTUAL) ---
+# --- 3. HERRAMIENTAS ---
 tools = [
-    Tool.from_dict({
-        "google_search": {}
-    }),
     Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
-                datastore=(
-                    f"projects/{PROJECT_ID}/locations/{DATA_STORE_LOCATION}"
-                    f"/collections/default_collection/dataStores/{DATA_STORE_ID}"
-                ),
+                datastore=DATA_STORE_ID,   # ✅ SOLO el ID
                 project=PROJECT_ID,
-                location=DATA_STORE_LOCATION,
+                location=DATA_STORE_LOCATION
             )
         )
-    ),
+    )
 ]
 
-
 # --- 4. MODELO ---
+# ✅ Versión estable y disponible en Europa
 model = GenerativeModel(
     model_name="gemini-2.5-pro",
     tools=tools
@@ -75,6 +77,6 @@ if st.button("Tasar ahora"):
             st.write(response.text)
 
         except Exception as e:
-            st.error(f"Error en la búsqueda: {str(e)}")
+            st.error(f"❌ Error en la búsqueda: {str(e)}")
 
-st.sidebar.info(f"Conectado al almacén: {DATA_STORE_ID}")
+st.sidebar.info(f"Conectado al Data Store: {DATA_STORE_ID}")
