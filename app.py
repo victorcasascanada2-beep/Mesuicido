@@ -28,7 +28,7 @@ def ejecutar_busqueda(modelo_tractor):
     try:
         herramientas = [configurar_herramientas()]
         # Usamos el nombre oficial correcto para evitar el error de modelo
-        model = GenerativeModel("gemini-1.5-pro") 
+        model = GenerativeModel("gemini-2.5-pro") 
         
         prompt = f"""
         Eres un experto tasador de maquinaria agrícola en España.
