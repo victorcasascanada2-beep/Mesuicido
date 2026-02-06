@@ -1,6 +1,5 @@
 import streamlit as st
 from PIL import Image
-from streamlit_js_eval
 import vertexai
 from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 from google.oauth2 import service_account
