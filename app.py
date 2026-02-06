@@ -53,13 +53,14 @@ def realizar_tasacion(modelo_tractor, horas, anio, extra_info):
     if not client:
         return "Error: No se pudo establecer conexión con el motor de IA."
     
-    # Identificador del modelo Gemini 2.5 Flash
-    model_id = "gemini-2.5-flash-preview-09-2025"
+    # CAMBIO: Usamos Gemini 1.5 Pro (versión estable 002) 
+    # Es mucho más preciso para tasación que la versión Flash.
+    model_id = "gemini-1.5-pro-002"
     
     # Instrucciones del sistema para definir el comportamiento del modelo
     system_prompt = """
     Eres un perito tasador senior especializado en maquinaria agrícola europea.
-    Tu objetivo es proporcionar una valoración de mercado precisa y realista.
+    Tu objetivo es proporcionar una valoración de mercado precisa y realista basada en anuncios actuales.
     
     METODOLOGÍA:
     1. Usa Google Search para encontrar anuncios actuales en Agriaffaires, Mascus y Traktorpool.
@@ -126,7 +127,7 @@ if st.button("🚀 Iniciar Peritaje"):
     else:
         # Indicador de carga
         with st.status("Consultando anuncios en Agriaffaires y Mascus...", expanded=True) as status:
-            st.write("Analizando tendencias de mercado...")
+            st.write("Analizando tendencias de mercado con Gemini 1.5 Pro...")
             resultado = realizar_tasacion(modelo_input, horas_input, anio_input, detalles_input)
             status.update(label="Tasación completada", state="complete")
         
@@ -136,5 +137,5 @@ if st.button("🚀 Iniciar Peritaje"):
 
 # Sidebar informativa
 st.sidebar.markdown("### Configuración Técnica")
-st.sidebar.info("Motor: Gemini 2.5 Flash\nRegión: europe-west1\nGrounding: Habilitado")
+st.sidebar.info("Motor: Gemini 1.5 Pro (Stable)\nRegión: europe-west1\nGrounding: Habilitado")
 st.sidebar.caption("Esta app busca anuncios reales en vivo para evitar datos obsoletos.")
