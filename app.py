@@ -7,31 +7,28 @@ st.title("🚜 Probando Gemini 2.5 Pro")
 
 if "google" in st.secrets:
     creds_info = dict(st.secrets["google"])
-    # Limpiamos la clave privada por si acaso
     if "private_key" in creds_info:
         creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
     
     try:
         credentials = service_account.Credentials.from_service_account_info(creds_info)
         
-        # IMPORTANTE: Usamos 'eu' y el proyecto correcto
+        # CAMBIO: Usamos europe-west1 que SI está en tu lista permitida
         vertexai.init(
             project=creds_info["project_id"], 
-            location="eu", 
+            location="europe-west1", 
             credentials=credentials
         )
         
-        st.success(f"Conectado a {creds_info['project_id']} en la región EU")
+        st.success(f"Conectado a {creds_info['project_id']} en Europe-West1")
 
         if st.button("Lanzar ráfaga a Gemini 2.5"):
-            # Usamos el nombre exacto de tu captura
+            # Usamos el nombre que viste en tu consola
             model = GenerativeModel("gemini-2.5-pro")
             
             with st.spinner("Consultando al cerebro 2.5..."):
-                response = model.generate_content("Hola, confirma que eres Gemini 2.5 Pro y que la conexión es correcta.")
-                st.markdown(f"### Respuesta de la IA:\n{response.text}")
+                response = model.generate_content("Confirma conexión en europe-west1")
+                st.markdown(f"### Respuesta:\n{response.text}")
                 
     except Exception as e:
-        st.error(f"Error técnico: {e}")
-else:
-    st.error("No se detectan los Secrets.")
+        st.error(f"Error técnico detallado: {e}")
