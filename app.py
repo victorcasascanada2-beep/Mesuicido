@@ -1,39 +1,24 @@
 import streamlit as st
+import vertexai
 
-# Intentamos cargar las dependencias con orden
+st.title("🔍 Buscador de Nombres Correctos")
+
 try:
-    import vertexai
-    from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
-    from google.oauth2 import service_account
-    librerias_ok = True
+    import vertexai.generative_models as gm
+    # Listamos todo lo que hay dentro de la librería para encontrar el nombre del buscador
+    nombres_disponibles = dir(gm)
+    
+    st.write("### Piezas encontradas en la librería de Google:")
+    
+    # Buscamos si existe algo que se llame 'Search' o 'Retrieval'
+    buscadores = [n for n in nombres_disponibles if "Search" in n or "Retrieval" in n]
+    
+    if buscadores:
+        st.success(f"✅ ¡Encontrados! Los nombres correctos son: {buscadores}")
+        st.info("Copia estos nombres y dímelos para que ajuste el código final.")
+    else:
+        st.warning("⚠️ No encuentro 'GoogleSearchRetrieval'. Veamos la lista completa:")
+        st.code(nombres_disponibles)
+
 except Exception as e:
-    st.error(f"Error de carga: {e}")
-    librerias_ok = False
-
-st.title("🚜 Verificación de Alta Sincronizada")
-
-if librerias_ok and "google" in st.secrets:
-    try:
-        creds = dict(st.secrets["google"])
-        creds["private_key"] = creds["private_key"].replace("\\n", "\n")
-        credentials = service_account.Credentials.from_service_account_info(creds)
-        
-        # Sincronizamos con us-central1 donde tienes el consumo
-        vertexai.init(project=creds["project_id"], location="us-central1", credentials=credentials)
-        st.success("✅ 'Cerebro' Gemini 2.5 Pro detectado.")
-
-        if st.button("PROBAR BÚSQUEDA"):
-            # Usamos el modelo que aparece en tu consola
-            model = GenerativeModel("gemini-2.5-pro")
-            search_tool = Tool.from_google_search_retrieval(GoogleSearchRetrieval())
-            
-            response = model.generate_content(
-                "Busca tractores John Deere en España.",
-                tools=[search_tool]
-            )
-            st.markdown(response.text)
-            
-    except Exception as e:
-        st.error(f"Error en la ejecución: {e}")
-else:
-    st.warning("Esperando configuración correcta de librerías y secrets...")
+    st.error(f"Ni siquiera puedo abrir la librería: {e}")
