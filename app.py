@@ -39,7 +39,7 @@ tools = [
 
 # --- 4. MODELO ---
 model = GenerativeModel(
-    model_name="gemini-1.5-flash", # Flash es más rápido para probar
+    model_name="gemini-2.0-pro", # Flash es más rápido para probar
     tools=tools
 )
 
