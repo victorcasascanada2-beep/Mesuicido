@@ -11,23 +11,35 @@ else:
     st.error("❌ No encuentro las credenciales en Secrets.")
     st.stop()
 
-# --- 2. CONFIGURACIÓN ÚNICA (He puesto tus IDs exactos) ---
-PROJECT_ID = "subida-fotos-drive" 
-LOCATION = "us-central1" # Región de la IA
-# Tu nuevo ID de almacén que acabamos de crear
-DATA_STORE_ID = "almacen-tasador-v2_1770407667877" 
-DATA_STORE_LOCATION = "europe-west1"
+# --- 2. CONFIGURACIÓN ---
+PROJECT_ID = "subida-fotos-drive"
 
-vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
+# Gemini 2.5 Pro SÍ está disponible en Europa
+LOCATION = "europe-west1"
 
-# --- 3. CONFIGURACIÓN DE HERRAMIENTAS ---
-# Aquí estaba el fallo del TypeError. Usamos 'datastore' en lugar de 'datastore_id'
+# Vertex AI Search SIEMPRE va en global
+DATA_STORE_ID = "almacen-tasador-v2_1770407667877"
+DATA_STORE_LOCATION = "global"
+
+vertexai.init(
+    project=PROJECT_ID,
+    location=LOCATION,
+    credentials=creds
+)
+
+# --- 3. HERRAMIENTAS (FORMA COMPATIBLE CON SDK ACTUAL) ---
 tools = [
-    Tool.from_google_search(),
+    # Google Search (nuevo contrato, compatible)
+    Tool(google_search={}),
+
+    # Vertex AI Search (RAG)
     Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
-                datastore=f"projects/{PROJECT_ID}/locations/{DATA_STORE_LOCATION}/collections/default_collection/dataStores/{DATA_STORE_ID}",
+                datastore=(
+                    f"projects/{PROJECT_ID}/locations/{DATA_STORE_LOCATION}"
+                    f"/collections/default_collection/dataStores/{DATA_STORE_ID}"
+                ),
                 project=PROJECT_ID,
                 location=DATA_STORE_LOCATION,
             )
@@ -35,10 +47,9 @@ tools = [
     ),
 ]
 
-
 # --- 4. MODELO ---
 model = GenerativeModel(
-    model_name="gemini-2.5-pro", # Flash es más rápido para probar
+    model_name="gemini-2.5-pro",
     tools=tools
 )
 
@@ -51,12 +62,18 @@ tractor = st.text_input("Modelo del tractor:", "John Deere 6150M")
 if st.button("Tasar ahora"):
     with st.spinner("Buscando precios reales..."):
         try:
-            prompt = f"Busca anuncios reales de {tractor} en España. Dame una tabla con Modelo, Precio, Horas y Link de la fuente."
+            prompt = (
+                f"Busca anuncios reales de {tractor} en España. "
+                "Devuélveme una tabla con columnas: "
+                "Modelo | Precio | Horas | Fuente (URL). "
+                "Usa solo datos reales y cita la fuente."
+            )
+
             response = model.generate_content(prompt)
-            
+
             st.markdown("### 📊 Resultado")
             st.write(response.text)
-            
+
         except Exception as e:
             st.error(f"Error en la búsqueda: {str(e)}")
 
