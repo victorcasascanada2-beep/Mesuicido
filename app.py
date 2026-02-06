@@ -13,7 +13,8 @@ else:
     st.stop()
 
 # --- 2. CONFIGURACIÓN ---
-PROJECT_ID = "236500839928" import streamlit as st
+PROJECT_ID = "236500839928" 
+import streamlit as st
 import os
 from google.cloud import aiplatform
 from vertexai.generative_models import GenerativeModel, Tool, grounding
