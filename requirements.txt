@@ -1,4 +1,10 @@
 streamlit
-google-cloud-aiplatform
+streamlit-js-eval
+google-genai
 google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
 Pillow
+requests
+google-cloud-aiplatform
