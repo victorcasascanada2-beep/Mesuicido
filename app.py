@@ -25,7 +25,7 @@ vertexai.init(
 
 # --- 3. HERRAMIENTAS (CON EL PARCHE PARA EL ERROR 400) ---
 tools = [
-    Tool.from_retrieval(
+    Tool.from(
         grounding.Retrieval(
             grounding.VertexAISearch(
                 datastore=DATA_STORE_ID,
@@ -35,8 +35,8 @@ tools = [
         )
     ),
     # Corrección de sintaxis: Google ahora exige esta forma para evitar el Error 400
-    Tool.from_google_search_retrieval(
-        grounding.GoogleSearchRetrieval()
+    Tool.from_google_search(
+        grounding.GoogleSearch()
     )
 ]
 
