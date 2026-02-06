@@ -1,24 +1,39 @@
 import streamlit as st
 import vertexai
+from google.oauth2 import service_account
+# Importamos solo lo que tu lista confirmó que existe
+from vertexai.generative_models import GenerativeModel, Tool
 
-st.title("🔍 Buscador de Nombres Correctos")
+st.title("🚜 Buscador Agrícola 2.5 Pro")
 
-try:
-    import vertexai.generative_models as gm
-    # Listamos todo lo que hay dentro de la librería para encontrar el nombre del buscador
-    nombres_disponibles = dir(gm)
-    
-    st.write("### Piezas encontradas en la librería de Google:")
-    
-    # Buscamos si existe algo que se llame 'Search' o 'Retrieval'
-    buscadores = [n for n in nombres_disponibles if "Search" in n or "Retrieval" in n]
-    
-    if buscadores:
-        st.success(f"✅ ¡Encontrados! Los nombres correctos son: {buscadores}")
-        st.info("Copia estos nombres y dímelos para que ajuste el código final.")
-    else:
-        st.warning("⚠️ No encuentro 'GoogleSearchRetrieval'. Veamos la lista completa:")
-        st.code(nombres_disponibles)
+if "google" in st.secrets:
+    try:
+        creds_info = dict(st.secrets["google"])
+        if "private_key" in creds_info:
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+        
+        credentials = service_account.Credentials.from_service_account_info(creds_info)
+        
+        # Sincronizamos con us-central1 (donde tu consola muestra actividad)
+        vertexai.init(project=creds_info["project_id"], location="us-central1", credentials=credentials)
+        st.success("✅ Sistema conectado y sincronizado.")
 
-except Exception as e:
-    st.error(f"Ni siquiera puedo abrir la librería: {e}")
+        query = st.text_input("¿Qué tractor buscamos?", value="John Deere 6155R")
+
+        if st.button("BUSCAR OFERTAS"):
+            with st.spinner("Rastreando portales en España y Europa..."):
+                # Creamos la herramienta de búsqueda usando el nombre genérico 'google_search_retrieval'
+                # que es el estándar interno cuando no aparece el nombre largo
+                search_tool = Tool.from_google_search_retrieval(
+                    google_search_retrieval={} # Esta es la forma más compatible
+                )
+                
+                model = GenerativeModel("gemini-2.5-pro")
+                
+                prompt = f"Busca ofertas de {query} en España. Dame una tabla con Modelo, Precio y Link."
+                
+                response = model.generate_content(prompt, tools=[search_tool])
+                st.markdown(response.text)
+
+    except Exception as e:
+        st.error(f"Error técnico: {e}")
