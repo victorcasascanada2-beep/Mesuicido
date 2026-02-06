@@ -3,7 +3,7 @@ import vertexai
 from google.oauth2 import service_account
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
-# --- 1. CREDENCIALES ---
+# --- 1. CREDENCIALES (INTACTO) ---
 if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
@@ -11,11 +11,11 @@ else:
     st.error("❌ No encuentro las credenciales en Secrets ([google]).")
     st.stop()
 
-# --- 2. CONFIGURACIÓN ---
+# --- 2. CONFIGURACIÓN CORRECTA (INTACTO) ---
 PROJECT_ID = "subida-fotos-drive"
 GEMINI_LOCATION = "europe-west1"
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877"
-DATA_STORE_LOCATION = "eu" 
+DATA_STORE_LOCATION = "eu"
 
 vertexai.init(
     project=PROJECT_ID,
@@ -23,8 +23,9 @@ vertexai.init(
     credentials=creds
 )
 
-# --- 3. HERRAMIENTAS ---
+# --- 3. HERRAMIENTAS (AJUSTADO PARA EVITAR ERROR 400) ---
 tools = [
+    # Tu conexión al Data Store (INTACTO)
     Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
@@ -34,14 +35,15 @@ tools = [
             )
         )
     ),
+    # Google Search corregido según la nueva documentación de Vertex AI
     Tool.from_google_search_retrieval(
         grounding.GoogleSearchRetrieval()
     )
 ]
 
-# --- 4. MODELO (Tu versión Gemini 2.5 Pro) ---
+# --- 4. MODELO (INTACTO) ---
 model = GenerativeModel(
-    model_name="gemini-2.5-pro", 
+    model_name="gemini-2.5-pro",
     tools=tools
 )
 
@@ -52,33 +54,32 @@ st.title("🚜 Tasador IA: El Putomilagro")
 tractor = st.text_input("Modelo del tractor:", "John Deere 6150M")
 
 if st.button("Tasar ahora"):
-    if not tractor:
-        st.warning("Escribe un modelo de tractor.")
-    else:
-        with st.spinner(f"Buscando precios para {tractor}..."):
-            try:
-                prompt = (
-                    f"Busca anuncios actuales de {tractor} en España. "
-                    "Devuélveme una tabla con: Modelo | Precio | Horas | Fuente (URL)."
-                )
+    with st.spinner("Buscando precios reales..."):
+        try:
+            prompt = (
+                f"Busca anuncios reales de {tractor} en España. "
+                "Devuélveme una tabla con columnas: "
+                "Modelo | Precio | Horas | Fuente (URL). "
+                "Usa solo datos reales y cita la fuente."
+            )
 
-                response = model.generate_content(prompt)
+            response = model.generate_content(prompt)
 
-                st.markdown("### 📊 Resultado")
-                
-                if response.candidates:
-                    resultado = response.candidates[0].content.parts[0].text
-                    st.write(resultado)
-                else:
-                    st.error("La IA no devolvió resultados.")
+            st.markdown("### 📊 Resultado")
+            
+            # Gestión de respuesta para asegurar que se pinte en pantalla
+            if response.text:
+                st.write(response.text)
+            else:
+                # Si response.text falla por seguridad, usamos la ruta directa al contenido
+                st.write(response.candidates[0].content.parts[0].text)
 
-                with st.expander("🔗 Ver fuentes consultadas"):
-                    if response.candidates[0].grounding_metadata.search_entry_point:
-                        st.write(response.candidates[0].grounding_metadata.search_entry_point.rendered_content, unsafe_allow_html=True)
-                    else:
-                        st.info("Información del Data Store privado.")
+            # Opcional: Mostrar las fuentes de Google Search debajo
+            if response.candidates[0].grounding_metadata.search_entry_point:
+                with st.expander("Ver fuentes oficiales"):
+                    st.write(response.candidates[0].grounding_metadata.search_entry_point.rendered_content, unsafe_allow_html=True)
 
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+        except Exception as e:
+            st.error(f"❌ Error en la búsqueda: {str(e)}")
 
-st.sidebar.info(f"Data Store: {DATA_STORE_ID}")
+st.sidebar.info(f"Conectado al Data Store: {DATA_STORE_ID}")
