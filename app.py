@@ -2,6 +2,49 @@ import streamlit as st
 import vertexai
 from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 from google.oauth2 import service_account
+
+st.title("🚜 Buscador Agrícola (Paso 1)")
+
+# 1. CONEXIÓN (Igual a la del PDF que funcionó)
+if "google" in st.secrets:
+    try:
+        creds_info = dict(st.secrets["google"])
+        if "private_key" in creds_info:
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+        
+        credentials = service_account.Credentials.from_service_account_info(creds_info)
+        
+        # Usamos la ubicación que te dio el "Verde": europe-west1
+        vertexai.init(
+            project=creds_info["project_id"], 
+            location="europe-west1", 
+            credentials=credentials
+        )
+        st.success("✅ Conexión con europe-west1 OK")
+    except Exception as e:
+        st.error(f"Error en conexión: {e}")
+        st.stop()
+
+# 2. BÚSQUEDA SIMPLE (Solo un paso más que el test anterior)
+query = st.text_input("¿Qué tractor buscamos?", value="John Deere 6175M")
+
+if st.button("BUSCAR AHORA"):
+    with st.spinner("Buscando en Google..."):
+        try:
+            # Añadimos la herramienta de búsqueda al modelo 2.5 Pro
+            search_tool = Tool.from_google_search_retrieval(GoogleSearchRetrieval())
+            model = GenerativeModel("gemini-2.5-pro")
+            
+            # Pedimos algo muy corto para evitar cuelgues
+            prompt = f"Busca ofertas de {query}. Dame una lista rápida con precios."
+            
+            response = model.generate_content(prompt, tools=[search_tool])
+            st.markdown(response.text)
+        except Exception as e:
+            st.error(f"Error en la búsqueda: {e}")import streamlit as st
+import vertexai
+from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
+from google.oauth2 import service_account
 import os
 
 # 1. CONFIGURACIÓN BÁSICA
