@@ -23,7 +23,7 @@ vertexai.init(
     credentials=creds
 )
 
-# --- 3. HERRAMIENTAS (SOLO EL PARCHE PARA EL ERROR 400) ---
+# --- 3. HERRAMIENTAS (CON EL PARCHE PARA EL ERROR 400) ---
 tools = [
     Tool.from_retrieval(
         grounding.Retrieval(
@@ -34,7 +34,7 @@ tools = [
             )
         )
     ),
-    # Esta es la parte que Google ha cambiado y daba el error 400
+    # Corrección de sintaxis: Google ahora exige esta forma para evitar el Error 400
     Tool.from_google_search_retrieval(
         grounding.GoogleSearchRetrieval()
     )
@@ -62,15 +62,20 @@ if st.button("Tasar ahora"):
                 "Usa solo datos reales y cita la fuente."
             )
 
+            # Llamada al modelo con las herramientas configuradas
             response = model.generate_content(prompt)
 
             st.markdown("### 📊 Resultado")
             
             # Mostramos el resultado asegurándonos de que pinte el texto
-            if response.text:
-                st.write(response.text)
-            elif response.candidates:
-                st.write(response.candidates[0].content.parts[0].text)
+            if response.candidates:
+                # Intentamos obtener el texto de la manera más directa posible
+                try:
+                    st.write(response.text)
+                except:
+                    st.write(response.candidates[0].content.parts[0].text)
+            else:
+                st.warning("No se recibieron candidatos de respuesta.")
 
         except Exception as e:
             st.error(f"❌ Error en la búsqueda: {str(e)}")
