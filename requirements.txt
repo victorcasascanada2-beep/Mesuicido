@@ -1,3 +1,5 @@
 streamlit
-google-genai
+google-cloud-aiplatform
 google-auth
+Pillow
+streamlit-js_eval
