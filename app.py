@@ -23,9 +23,7 @@ vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
 # --- 3. CONFIGURACIÓN DE HERRAMIENTAS ---
 # Aquí estaba el fallo del TypeError. Usamos 'datastore' en lugar de 'datastore_id'
 tools = [
-    Tool.from_google_search_retrieval(
-        grounding.GoogleSearchRetrieval()
-    ),
+    Tool.from_google_search(),
     Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
@@ -36,6 +34,7 @@ tools = [
         )
     ),
 ]
+
 
 # --- 4. MODELO ---
 model = GenerativeModel(
