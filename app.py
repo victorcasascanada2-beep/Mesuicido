@@ -13,7 +13,7 @@ else:
 
 # --- 2. CONFIGURACIÓN ÚNICA (He puesto tus IDs exactos) ---
 PROJECT_ID = "subida-fotos-drive" 
-LOCATION = "europe-west1" # Región de la IA
+LOCATION = "us-central1" # Región de la IA
 # Tu nuevo ID de almacén que acabamos de crear
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877" 
 DATA_STORE_LOCATION = "global" 
