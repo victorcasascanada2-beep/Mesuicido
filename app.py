@@ -21,12 +21,16 @@ DATA_STORE_ID = "tasador-maquinaria-v1_1770401678792"
 vertexai.init(project=PROJECT_ID, location=REGION_MODELO, credentials=creds)
 
 def configurar_herramientas():
+    # Creamos la ruta completa. Esto obliga a la API a ir a 'eu' y buscar el ID exacto.
+    # A veces el datastore solo con el ID no basta cuando se usa 'eu'.
+    nombre_completo_datastore = f"projects/{PROJECT_ID}/locations/eu/collections/default_collection/dataStores/{DATA_STORE_ID}"
+    
     return Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
-                datastore=DATA_STORE_ID,
+                datastore=nombre_completo_datastore, # <--- Pasamos la ruta completa aquí
                 project=PROJECT_ID,
-                location="eu" # Tu almacén de datos en Europa
+                location="eu" 
             )
         )
     )
