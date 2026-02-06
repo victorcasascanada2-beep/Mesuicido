@@ -1,9 +1,11 @@
 import streamlit as st
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 from google.oauth2 import service_account
+import os
 
-st.title("🚜 Probando Gemini 2.5 Pro")
+# 1. CONFIGURACIÓN BÁSICA
+st.set_page_config(page_title="Buscador 2.5 Pro", page_icon="🚜")
 
 if "google" in st.secrets:
     creds_info = dict(st.secrets["google"])
@@ -12,23 +14,30 @@ if "google" in st.secrets:
     
     try:
         credentials = service_account.Credentials.from_service_account_info(creds_info)
-        
-        # CAMBIO: Usamos europe-west1 que SI está en tu lista permitida
-        vertexai.init(
-            project=creds_info["project_id"], 
-            location="europe-west1", 
-            credentials=credentials
-        )
-        
-        st.success(f"Conectado a {creds_info['project_id']} en Europe-West1")
+        # Usamos la región que funcionó en tu test [cite: 4, 7]
+        vertexai.init(project=creds_info["project_id"], location="europe-west1", credentials=credentials)
+    except Exception as e:
+        st.error(f"Error de llave: {e}")
 
-        if st.button("Lanzar ráfaga a Gemini 2.5"):
-            # Usamos el nombre que viste en tu consola
+# 2. INTERFAZ DE BÚSQUEDA
+st.title("Buscador de Maquinaria")
+
+with st.form("search_form"):
+    marca = st.text_input("Marca", value="John Deere")
+    modelo = st.text_input("Modelo", value="6175M")
+    submit = st.form_submit_button("🔍 BUSCAR")
+
+if submit:
+    with st.spinner("Consultando Google Search con Gemini 2.5 Pro..."):
+        try:
+            # Activamos la herramienta de búsqueda real
+            search_tool = Tool.from_google_search_retrieval(GoogleSearchRetrieval())
             model = GenerativeModel("gemini-2.5-pro")
             
-            with st.spinner("Consultando al cerebro 2.5..."):
-                response = model.generate_content("Confirma conexión en europe-west1")
-                st.markdown(f"### Respuesta:\n{response.text}")
-                
-    except Exception as e:
-        st.error(f"Error técnico detallado: {e}")
+            prompt = f"Busca ofertas actuales de {marca} {modelo}. Dame una tabla con los resultados."
+            
+            # Ejecución
+            response = model.generate_content(prompt, tools=[search_tool])
+            st.markdown(response.text)
+        except Exception as e:
+            st.error(f"Error en la búsqueda: {e}")
