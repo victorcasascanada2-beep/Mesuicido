@@ -1,72 +1,57 @@
 import streamlit as st
-from PIL import Image
 import vertexai
-from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 from google.oauth2 import service_account
-import os
+from google.cloud import aiplatform
 
-# --- 1. CONFIGURACIÓN E INTERFAZ ---
-st.set_page_config(page_title="Buscador Agrícola", page_icon="🚜", layout="centered")
+st.title("🛠 Diagnóstico de Conexión")
 
-st.markdown("""
-<style>
-    header[data-testid="stHeader"] { display: none !important; }
-    footer { display: none !important; }
-    .block-container { 
-        margin-top: -3rem !important; 
-        padding-top: 1rem !important; 
-    }
-    [data-testid="stImage"] { display: flex; justify-content: center; }
-</style>
-""", unsafe_allow_html=True)
+# PASO 1: Leer los Secrets
+st.subheader("1. Lectura de Secrets")
+if "google" in st.secrets:
+    st.success("✅ Tag [google] encontrado en Secrets")
+    creds_info = dict(st.secrets["google"])
+    st.write(f"Proyecto detectado: `{creds_info.get('project_id')}`")
+else:
+    st.error("❌ No se encuentra el tag [google] en Secrets")
+    st.stop()
 
-# --- 2. CONEXIÓN GOOGLE (Limpieza de Clave) ---
-if "credentials" not in st.session_state:
+# PASO 2: Validar la Clave Privada
+st.subheader("2. Validación de Credenciales")
+try:
+    if "private_key" in creds_info:
+        # Limpieza de seguridad para el formato de la clave
+        creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+    
+    credentials = service_account.Credentials.from_service_account_info(creds_info)
+    st.success("✅ Formato de credenciales válido")
+except Exception as e:
+    st.error(f"❌ Error en el formato del JSON/Key: {e}")
+    st.stop()
+
+# PASO 3: Inicializar Vertex AI
+st.subheader("3. Conexión con Vertex AI")
+try:
+    vertexai.init(
+        project=creds_info["project_id"],
+        location="us-central1", # Usamos us-central1 para la prueba inicial por ser la más estable
+        credentials=credentials
+    )
+    st.success("✅ Vertex AI inicializado correctamente")
+except Exception as e:
+    st.error(f"❌ Error al inicializar Vertex AI: {e}")
+    st.stop()
+
+# PASO 4: Prueba de "Latido" (Ping)
+st.subheader("4. Prueba de Respuesta (Ping)")
+if st.button("Lanzar prueba de comunicación"):
     try:
-        if "google" in st.secrets:
-            creds_info = dict(st.secrets["google"])
-            # Limpiamos posibles errores de formato en la clave
-            if "private_key" in creds_info:
-                creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
-            
-            st.session_state.credentials = service_account.Credentials.from_service_account_info(creds_info)
-            vertexai.init(
-                project=creds_info["project_id"], 
-                location="eu", 
-                credentials=st.session_state.credentials
-            )
+        from vertexai.generative_models import GenerativeModel
+        model = GenerativeModel("gemini-1.5-flash") # Usamos Flash por ser el más rápido para pruebas
+        
+        with st.spinner("Esperando respuesta de Gemini..."):
+            response = model.generate_content("Hola, di 'Conexión OK'")
+            st.write(f"Respuesta de la IA: **{response.text}**")
+            st.success("🎉 ¡CONEXIÓN COMPLETA! El sistema está listo.")
     except Exception as e:
-        st.error(f"Error de conexión: {e}")
-
-# --- 3. INTERFAZ Y LÓGICA ---
-if os.path.exists("agricolanoroestelogo.jpg"):
-    st.image("agricolanoroestelogo.jpg", width=300)
-
-st.title("Buscador de Mercado")
-
-with st.form("form_busqueda"):
-    c1, c2 = st.columns(2)
-    marca = c1.text_input("Marca", value="John Deere")
-    modelo = c1.text_input("Modelo", value="6175M")
-    horas = c2.text_input("Horas", value="9000")
-    region = c2.selectbox("Región", ["Europa", "España", "Francia"])
-    submit = st.form_submit_button("🔍 BUSCAR OFERTAS", use_container_width=True)
-
-if submit:
-    with st.spinner("Buscando en tiempo real..."):
-        try:
-            search_tool = Tool.from_google_search_retrieval(GoogleSearchRetrieval())
-            model = GenerativeModel("gemini-1.5-pro")
-            
-            prompt = f"Busca ofertas de {marca} {modelo} con {horas}h en {region}. Dame una tabla con links."
-            response = model.generate_content(prompt, tools=[search_tool])
-            
-            st.session_state.resultados = response.text
-        except Exception as e:
-            st.error(f"Error en búsqueda: {e}")
-
-if "resultados" in st.session_state:
-    st.markdown(st.session_state.resultados)
-    if st.button("Nueva búsqueda"):
-        del st.session_state.resultados
-        st.rerun()
+        st.error(f"❌ Error en la llamada a la IA: {e}")
+        st.info("Nota: Revisa si el email de la cuenta de servicio tiene el rol 'Vertex AI User' en Google Cloud Console.")
