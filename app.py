@@ -3,7 +3,7 @@ import vertexai
 from google.oauth2 import service_account
 from vertexai.generative_models import GenerativeModel, Tool, grounding
 
-# --- 1. CREDENCIALES (INTACTO) ---
+# --- 1. CREDENCIALES ---
 if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
@@ -11,9 +11,10 @@ else:
     st.error("❌ No encuentro las credenciales en Secrets ([google]).")
     st.stop()
 
-# --- 2. CONFIGURACIÓN CORRECTA (TUS IDs ORIGINALES) ---
+# --- 2. CONFIGURACIÓN ---
 PROJECT_ID = "subida-fotos-drive"
 GEMINI_LOCATION = "europe-west1"
+
 DATA_STORE_ID = "almacen-tasador-v2_1770407667877"
 DATA_STORE_LOCATION = "eu"
 
@@ -23,9 +24,9 @@ vertexai.init(
     credentials=creds
 )
 
-# --- 3. HERRAMIENTAS (CON EL PARCHE PARA EL ERROR 400) ---
+# --- 3. TOOL CORRECTA (SOLO DATA STORE) ---
 tools = [
-    Tool.from(
+    Tool.from_retrieval(
         grounding.Retrieval(
             grounding.VertexAISearch(
                 datastore=DATA_STORE_ID,
@@ -33,14 +34,10 @@ tools = [
                 location=DATA_STORE_LOCATION
             )
         )
-    ),
-    # Corrección de sintaxis: Google ahora exige esta forma para evitar el Error 400
-    Tool.from_google_search(
-        grounding.GoogleSearch()
     )
 ]
 
-# --- 4. MODELO (TU VERSIÓN 2.5 PRO) ---
+# --- 4. MODELO ---
 model = GenerativeModel(
     model_name="gemini-2.5-pro",
     tools=tools
@@ -62,20 +59,14 @@ if st.button("Tasar ahora"):
                 "Usa solo datos reales y cita la fuente."
             )
 
-            # Llamada al modelo con las herramientas configuradas
-            response = model.generate_content(prompt)
+            # 🔑 AQUÍ está la corrección real
+            response = model.generate_content(
+                prompt,
+                google_search=True
+            )
 
             st.markdown("### 📊 Resultado")
-            
-            # Mostramos el resultado asegurándonos de que pinte el texto
-            if response.candidates:
-                # Intentamos obtener el texto de la manera más directa posible
-                try:
-                    st.write(response.text)
-                except:
-                    st.write(response.candidates[0].content.parts[0].text)
-            else:
-                st.warning("No se recibieron candidatos de respuesta.")
+            st.write(response.text)
 
         except Exception as e:
             st.error(f"❌ Error en la búsqueda: {str(e)}")
