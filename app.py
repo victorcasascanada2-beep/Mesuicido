@@ -1,9 +1,9 @@
 import streamlit as st
 import vertexai
 from google.oauth2 import service_account
-from vertexai.generative_models import GenerativeModel, Tool, grounding
+from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval # Importación directa
 
-# --- 1. CREDENCIALES ---
+# --- 1. CREDENCIALES (INTACTO) ---
 if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
@@ -17,52 +17,43 @@ LOCATION = "europe-west1"
 
 vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
 
-# --- 3. HERRAMIENTAS (SINTAXIS CORREGIDA PARA EL ERROR 400) ---
-# El error pide usar 'google_search'. En el SDK actual de Vertex, 
-# se hace a través de GoogleSearchRetrieval sin parámetros extra.
+# --- 3. HERRAMIENTAS (LA SOLUCIÓN AL ERROR 400) ---
+# En lugar de grounding.GoogleSearchRetrieval, usamos la clase directa 
+# que ya viene configurada para enviar el campo 'google_search'
 tools = [
     Tool.from_google_search_retrieval(
-        grounding.GoogleSearchRetrieval()
+        google_search_retrieval=GoogleSearchRetrieval() 
     )
 ]
 
-# --- 4. MODELO (2.5 PRO) ---
+# --- 4. MODELO (TU 2.5 PRO) ---
 model = GenerativeModel(
     model_name="gemini-2.5-pro", 
     tools=tools
 )
 
 # --- 5. INTERFAZ ---
-st.title("🚜 Paso 1: Lista de Resultados (Sin Error 400)")
+st.title("🚜 Paso 1: Lista de Resultados (2.5 Pro)")
 
 tractor = st.text_input("Modelo de tractor:", "John Deere 6150M")
 
 if st.button("Buscar Anuncios"):
-    with st.spinner("Conectando con Google Search..."):
+    with st.spinner("Conectando con la nueva API de Google..."):
         try:
             prompt = (
                 f"Busca anuncios reales de {tractor} en España. "
                 "Dame una lista con: Nombre, Precio y URL."
             )
             
-            # Llamada limpia al modelo
+            # Llamada limpia
             response = model.generate_content(prompt)
 
             st.markdown("### 📝 Resultados:")
             if response.candidates:
-                # El texto principal de la respuesta
                 st.write(response.candidates[0].content.parts[0].text)
-                
-                # Opcional: Mostrar las fuentes de búsqueda si están disponibles
-                if response.candidates[0].grounding_metadata.search_entry_point:
-                    st.divider()
-                    st.caption("Fuentes de Google Search:")
-                    st.write(response.candidates[0].grounding_metadata.search_entry_point.rendered_content, unsafe_allow_html=True)
             else:
                 st.warning("No se recibieron resultados.")
 
         except Exception as e:
-            # Si el error 400 persiste, imprimimos el mensaje detallado para ver si Google pide algo más
             st.error(f"Fallo técnico: {str(e)}")
-            if "google_search" in str(e):
-                st.info("Google está forzando el cambio a la nueva API de búsqueda.")
+            st.info("Si el 400 persiste, es que Google exige actualizar la librería 'google-cloud-aiplatform'.")
