@@ -8,57 +8,61 @@ if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
 else:
-    st.error("❌ Revisa los Secrets en Streamlit.")
+    st.error("❌ Revisa los Secrets.")
     st.stop()
 
-# --- 2. CONFIGURACIÓN (TUS IDs OFICIALES) ---
-PROJECT_ID = "subida-fotos-drive" #
+# --- 2. CONFIGURACIÓN ---
+PROJECT_ID = "subida-fotos-drive"
 LOCATION = "europe-west1" 
 
 vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
 
-# --- 3. HERRAMIENTAS ---
-# Activamos el buscador siguiendo la lógica de herramientas [cite: 75, 125]
+# --- 3. HERRAMIENTAS (SINTAXIS CORREGIDA PARA EL ERROR 400) ---
+# El error pide usar 'google_search'. En el SDK actual de Vertex, 
+# se hace a través de GoogleSearchRetrieval sin parámetros extra.
 tools = [
     Tool.from_google_search_retrieval(
         grounding.GoogleSearchRetrieval()
     )
 ]
 
-# --- 4. MODELO (GEMINI-2.5-PRO) ---
-# Usamos el ID exacto que aparece en tu tabla de modelos estables
+# --- 4. MODELO (2.5 PRO) ---
 model = GenerativeModel(
     model_name="gemini-2.5-pro", 
     tools=tools
 )
 
 # --- 5. INTERFAZ ---
-st.title("🚜 Paso 1: Lista de Resultados Reales")
+st.title("🚜 Paso 1: Lista de Resultados (Sin Error 400)")
 
-tractor = st.text_input("Introduce modelo para listar anuncios:", "John Deere 6150M")
+tractor = st.text_input("Modelo de tractor:", "John Deere 6150M")
 
 if st.button("Buscar Anuncios"):
-    with st.spinner("Rastreando anuncios reales en España..."):
+    with st.spinner("Conectando con Google Search..."):
         try:
-            # Solicitud simplificada para obtener una lista numerada [cite: 5, 473]
             prompt = (
-                f"Enumera anuncios reales de {tractor} en venta en España. "
-                "Para cada uno indica: Nombre del anuncio, Precio y la URL directa."
+                f"Busca anuncios reales de {tractor} en España. "
+                "Dame una lista con: Nombre, Precio y URL."
             )
             
-            # Generamos el contenido según la estructura oficial [cite: 471, 491]
+            # Llamada limpia al modelo
             response = model.generate_content(prompt)
 
-            st.markdown("### 📝 Lista de Anuncios Encontrados:")
-            
-            # Extraemos el texto de la respuesta [cite: 35, 435, 474]
-            if response.candidates and response.candidates[0].content.parts:
+            st.markdown("### 📝 Resultados:")
+            if response.candidates:
+                # El texto principal de la respuesta
                 st.write(response.candidates[0].content.parts[0].text)
+                
+                # Opcional: Mostrar las fuentes de búsqueda si están disponibles
+                if response.candidates[0].grounding_metadata.search_entry_point:
+                    st.divider()
+                    st.caption("Fuentes de Google Search:")
+                    st.write(response.candidates[0].grounding_metadata.search_entry_point.rendered_content, unsafe_allow_html=True)
             else:
-                st.warning("No se encontraron anuncios disponibles en este momento.")
+                st.warning("No se recibieron resultados.")
 
         except Exception as e:
-            st.error(f"❌ Fallo técnico en el Paso 1: {str(e)}")
-
-# Información del proyecto para tu referencia
-st.sidebar.info(f"Proyecto Activo: {PROJECT_ID}")
+            # Si el error 400 persiste, imprimimos el mensaje detallado para ver si Google pide algo más
+            st.error(f"Fallo técnico: {str(e)}")
+            if "google_search" in str(e):
+                st.info("Google está forzando el cambio a la nueva API de búsqueda.")
