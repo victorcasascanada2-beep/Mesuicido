@@ -1,61 +1,62 @@
 import streamlit as st
-import vertexai
+from google import genai
 from google.oauth2 import service_account
-from vertexai.generative_models import GenerativeModel, Tool, grounding
 
-# --- 1. CREDENCIALES (INTACTO) ---
-if "google" in st.secrets:
-    creds_info = st.secrets["google"]
-    creds = service_account.Credentials.from_service_account_info(creds_info)
-else:
-    st.error("❌ Revisa los Secrets.")
-    st.stop()
+# --- 1. CONEXIÓN (Basada al 100% en tu 1puntocero.txt) ---
+def conectar_ia():
+    if "google" in st.secrets:
+        creds_dict = st.secrets["google"]
+        # Limpieza de la clave privada (tal cual lo tienes en tu txt)
+        raw_key = str(creds_dict.get("private_key", ""))
+        clean_key = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
+        creds_dict["private_key"] = clean_key
+        
+        google_creds = service_account.Credentials.from_service_account_info(
+            creds_dict, 
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        
+        # Conexión profesional a Vertex AI
+        return genai.Client(
+            vertexai=True, 
+            project=creds_dict.get("project_id"), 
+            location="europe-west1", 
+            credentials=google_creds
+        )
+    return None
 
-# --- 2. CONFIGURACIÓN ---
-PROJECT_ID = "subida-fotos-drive"
-LOCATION = "europe-west1" 
+# Inicializamos el cliente
+client = conectar_ia()
 
-vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
+# --- 2. INTERFAZ ---
+st.title("🚜 Paso 1: Lista de Anuncios (Motor 2.5 Pro)")
 
-# --- 3. HERRAMIENTAS (SINTAXIS COMPATIBLE) ---
-# Volvemos a 'grounding', pero sin pasarle parámetros para que
-# el sistema intente elegir el nombre de campo correcto solo.
-tools = [
-    Tool.from_google_search_retrieval(
-        google_search_retrieval=grounding.GoogleSearchRetrieval()
-    )
-]
+tractor = st.text_input("Modelo de tractor para listar:", "John Deere 6150M")
 
-# --- 4. MODELO (2.5 PRO) ---
-model = GenerativeModel(
-    model_name="gemini-2.5-pro", 
-    tools=tools
-)
-
-# --- 5. INTERFAZ ---
-st.title("🚜 Paso 1: Lista de Resultados (2.5 Pro)")
-
-tractor = st.text_input("Modelo de tractor:", "John Deere 6150M")
-
-if st.button("Buscar Anuncios"):
-    with st.spinner("Conectando con Google..."):
+if st.button("Buscar Anuncios") and client:
+    with st.spinner("Rastreando anuncios reales en España..."):
         try:
-            prompt = (
-                f"Busca anuncios reales de {tractor} en España. "
-                "Dame una lista con: Nombre del anuncio, Precio y URL."
+            # Esta es la llamada que funciona en tu archivo 1puntocero.txt
+            response = client.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=f"Busca anuncios reales de {tractor} en España. Dame una lista con: Nombre del anuncio, Precio y URL.",
+                config={
+                    # La sintaxis que arregla el Error 400
+                    "tools": [{"google_search": {}}],
+                    "temperature": 0.3
+                }
             )
-            
-            # Generamos contenido de la forma más simple posible
-            response = model.generate_content(prompt)
 
-            st.markdown("### 📝 Resultados:")
-            if response.candidates:
-                st.write(response.candidates[0].content.parts[0].text)
+            st.markdown("### 📝 Resultados encontrados:")
+            if response.text:
+                st.write(response.text)
             else:
-                st.warning("No se recibieron resultados.")
+                st.warning("No se han encontrado resultados. Prueba con otro modelo.")
 
         except Exception as e:
-            st.error(f"Fallo técnico: {str(e)}")
-            # Si vuelve a salir el error 400, el problema es la versión de la librería en Streamlit
-            if "google_search_retrieval" in str(e):
-                st.info("Sigue enviando el nombre antiguo. Intentaremos un último truco si esto falla.")
+            st.error(f"❌ Error con el nuevo motor: {str(e)}")
+            if "404" in str(e):
+                st.info("Revisa que el ID del proyecto sea correcto en los secrets.")
+
+elif not client:
+    st.error("No se ha podido conectar con Vertex AI. Revisa tus credenciales.")
