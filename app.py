@@ -2,13 +2,10 @@ import streamlit as st
 from google import genai
 from google.oauth2 import service_account
 
-# --- 1. CONEXIÓN (Copiada de tu ia_engine.py) ---
-def conectar_vertex():
+# --- 1. CONEXIÓN (TU ESTÁNDAR DE ia_engine.py) ---
+def conectar_ia():
     if "google" in st.secrets:
-        # IMPORTANTE: Creamos un dict nuevo porque st.secrets no deja escribir
         creds_dict = dict(st.secrets["google"])
-        
-        # Tu lógica exacta de limpieza de clave
         raw_key = str(creds_dict.get("private_key", ""))
         clean_key = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
         creds_dict["private_key"] = clean_key
@@ -17,41 +14,50 @@ def conectar_vertex():
             creds_dict, 
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
-        
-        # Cliente GenAI con el interruptor Vertex activado
         return genai.Client(
             vertexai=True, 
             project=creds_dict.get("project_id"), 
-            location="us-central1", # O la que prefieras
+            location="us-central1", 
             credentials=google_creds
         )
     return None
 
-# --- 2. INTERFAZ ---
-st.title("🚜 Paso 1: Lista con Gemini 2.5 Pro")
+# --- 2. FUNCIÓN DE RASTREO ESPECÍFICO ---
+def buscar_en_agriaffaires(client, modelo):
+    # Instrucción ultra-específica para forzar la búsqueda en el dominio
+    prompt = (
+        f"Actúa como un analista de mercado agrícola. "
+        f"Busca anuncios actuales del tractor '{modelo}' en el portal agriaffaires.es. "
+        "Necesito que generes una tabla comparativa con las siguientes columnas: "
+        "| Modelo Exacto | Año | Horas | Ubicación | Precio | URL del Anuncio |"
+    )
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=prompt,
+            config={
+                "tools": [{"google_search": {}}], # Usamos la búsqueda para saltar el bloqueo
+                "temperature": 0.1 # Temperatura mínima para máxima precisión en datos
+            }
+        )
+        return response.text
+    except Exception as e:
+        return f"❌ Error accediendo a Agriaffaires: {str(e)}"
 
-client = conectar_vertex()
+# --- 3. INTERFAZ ---
+st.title("🚜 Extractor Agriaffaires 2.5 Pro")
 
-tractor = st.text_input("Modelo de tractor:", "John Deere 6150M")
+client = conectar_ia()
 
-if st.button("Buscar Anuncios") and client:
-    with st.spinner("Rastreando mercado..."):
-        try:
-            # Llamada idéntica a la de tu ia_engine.py
-            response = client.models.generate_content(
-                model="gemini-2.5-pro",
-                contents=f"Busca anuncios reales de {tractor} en España. Dame una lista con: Nombre, Precio y URL.",
-                config={
-                    "tools": [{"google_search": {}}], # LA SOLUCIÓN DEFINITIVA
-                    "temperature": 0.35
-                }
-            )
-
-            st.markdown("### 📝 Resultados:")
-            if response.text:
-                st.write(response.text)
-            else:
-                st.warning("No se recibieron resultados.")
-
-        except Exception as e:
-            st.error(f"❌ Error en el motor: {str(e)}")
+if client:
+    modelo_tractor = st.text_input("Introduce modelo (ej: John Deere 6150M):")
+    
+    if st.button("Rastrear Agriaffaires"):
+        if modelo_tractor:
+            with st.spinner(f"Accediendo a Agriaffaires para {modelo_tractor}..."):
+                tabla_resultados = buscar_en_agriaffaires(client, modelo_tractor)
+                st.markdown("### 📊 Comparativa de Mercado (Agriaffaires)")
+                st.markdown(tabla_resultados)
+        else:
+            st.warning("Por favor, introduce un modelo.")
