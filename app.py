@@ -2,13 +2,12 @@ import streamlit as st
 from google import genai
 from google.oauth2 import service_account
 
-# --- 1. CONEXIÓN (TU ESTÁNDAR DE ia_engine.py) ---
+# --- 1. TU CONEXIÓN ESTÁNDAR (La que no falla) ---
 def conectar_ia():
     if "google" in st.secrets:
         creds_dict = dict(st.secrets["google"])
         raw_key = str(creds_dict.get("private_key", ""))
-        clean_key = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
-        creds_dict["private_key"] = clean_key
+        creds_dict["private_key"] = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
         
         google_creds = service_account.Credentials.from_service_account_info(
             creds_dict, 
@@ -22,14 +21,14 @@ def conectar_ia():
         )
     return None
 
-# --- 2. FUNCIÓN DE RASTREO ESPECÍFICO ---
-def buscar_en_agriaffaires(client, modelo):
-    # Instrucción ultra-específica para forzar la búsqueda en el dominio
+# --- 2. MOTOR DE BÚSQUEDA PROFUNDA ---
+def buscar_agriaffaires_masivo(client, modelo):
+    # Definimos el "Barrido" para engañar al límite de 3 resultados
     prompt = (
-        f"Actúa como un analista de mercado agrícola. "
-        f"Busca anuncios actuales del tractor '{modelo}' en el portal agriaffaires.es. "
-        "Necesito que generes una tabla comparativa con las siguientes columnas: "
-        "| Modelo Exacto | Año | Horas | Ubicación | Precio | URL del Anuncio |"
+        f"Busca de forma exhaustiva anuncios del tractor '{modelo}' en agriaffaires.es. "
+        "Necesito que encuentres al menos 15 resultados diferentes. "
+        "Para lograrlo, busca anuncios en diferentes zonas: Castilla y León, Galicia, Andalucía y Aragón. "
+        "Presenta los resultados en una TABLA con: | Modelo | Año | Horas | Provincia | Precio | URL |"
     )
     
     try:
@@ -37,27 +36,21 @@ def buscar_en_agriaffaires(client, modelo):
             model="gemini-2.5-pro",
             contents=prompt,
             config={
-                "tools": [{"google_search": {}}], # Usamos la búsqueda para saltar el bloqueo
-                "temperature": 0.1 # Temperatura mínima para máxima precisión en datos
+                "tools": [{"google_search": {}}],
+                "temperature": 0.2
             }
         )
         return response.text
     except Exception as e:
-        return f"❌ Error accediendo a Agriaffaires: {str(e)}"
+        return f"Error: {str(e)}"
 
 # --- 3. INTERFAZ ---
-st.title("🚜 Extractor Agriaffaires 2.5 Pro")
-
+st.title("🚜 Buscador de Alto Rendimiento")
 client = conectar_ia()
 
 if client:
-    modelo_tractor = st.text_input("Introduce modelo (ej: John Deere 6150M):")
-    
-    if st.button("Rastrear Agriaffaires"):
-        if modelo_tractor:
-            with st.spinner(f"Accediendo a Agriaffaires para {modelo_tractor}..."):
-                tabla_resultados = buscar_en_agriaffaires(client, modelo_tractor)
-                st.markdown("### 📊 Comparativa de Mercado (Agriaffaires)")
-                st.markdown(tabla_resultados)
-        else:
-            st.warning("Por favor, introduce un modelo.")
+    modelo = st.text_input("Modelo de tractor:", "John Deere 6150M")
+    if st.button("Rastrear Mercado (15+ resultados)"):
+        with st.spinner("Realizando barrido por zonas..."):
+            tabla = buscar_agriaffaires_masivo(client, modelo)
+            st.markdown(tabla)
