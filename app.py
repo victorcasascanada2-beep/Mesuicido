@@ -2,11 +2,13 @@ import streamlit as st
 from google import genai
 from google.oauth2 import service_account
 
-# --- 1. CONEXIÓN (Basada al 100% en tu 1puntocero.txt) ---
-def conectar_ia():
+# --- 1. CONEXIÓN (Copiada de tu ia_engine.py) ---
+def conectar_vertex():
     if "google" in st.secrets:
-        creds_dict = st.secrets["google"]
-        # Limpieza de la clave privada (tal cual lo tienes en tu txt)
+        # IMPORTANTE: Creamos un dict nuevo porque st.secrets no deja escribir
+        creds_dict = dict(st.secrets["google"])
+        
+        # Tu lógica exacta de limpieza de clave
         raw_key = str(creds_dict.get("private_key", ""))
         clean_key = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
         creds_dict["private_key"] = clean_key
@@ -16,47 +18,40 @@ def conectar_ia():
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
         
-        # Conexión profesional a Vertex AI
+        # Cliente GenAI con el interruptor Vertex activado
         return genai.Client(
             vertexai=True, 
             project=creds_dict.get("project_id"), 
-            location="europe-west1", 
+            location="us-central1", # O la que prefieras
             credentials=google_creds
         )
     return None
 
-# Inicializamos el cliente
-client = conectar_ia()
-
 # --- 2. INTERFAZ ---
-st.title("🚜 Paso 1: Lista de Anuncios (Motor 2.5 Pro)")
+st.title("🚜 Paso 1: Lista con Gemini 2.5 Pro")
 
-tractor = st.text_input("Modelo de tractor para listar:", "John Deere 6150M")
+client = conectar_vertex()
+
+tractor = st.text_input("Modelo de tractor:", "John Deere 6150M")
 
 if st.button("Buscar Anuncios") and client:
-    with st.spinner("Rastreando anuncios reales en España..."):
+    with st.spinner("Rastreando mercado..."):
         try:
-            # Esta es la llamada que funciona en tu archivo 1puntocero.txt
+            # Llamada idéntica a la de tu ia_engine.py
             response = client.models.generate_content(
                 model="gemini-2.5-pro",
-                contents=f"Busca anuncios reales de {tractor} en España. Dame una lista con: Nombre del anuncio, Precio y URL.",
+                contents=f"Busca anuncios reales de {tractor} en España. Dame una lista con: Nombre, Precio y URL.",
                 config={
-                    # La sintaxis que arregla el Error 400
-                    "tools": [{"google_search": {}}],
-                    "temperature": 0.3
+                    "tools": [{"google_search": {}}], # LA SOLUCIÓN DEFINITIVA
+                    "temperature": 0.35
                 }
             )
 
-            st.markdown("### 📝 Resultados encontrados:")
+            st.markdown("### 📝 Resultados:")
             if response.text:
                 st.write(response.text)
             else:
-                st.warning("No se han encontrado resultados. Prueba con otro modelo.")
+                st.warning("No se recibieron resultados.")
 
         except Exception as e:
-            st.error(f"❌ Error con el nuevo motor: {str(e)}")
-            if "404" in str(e):
-                st.info("Revisa que el ID del proyecto sea correcto en los secrets.")
-
-elif not client:
-    st.error("No se ha podido conectar con Vertex AI. Revisa tus credenciales.")
+            st.error(f"❌ Error en el motor: {str(e)}")
