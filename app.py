@@ -8,67 +8,46 @@ if "google" in st.secrets:
     creds_info = st.secrets["google"]
     creds = service_account.Credentials.from_service_account_info(creds_info)
 else:
-    st.error("❌ No encuentro las credenciales en Secrets ([google]).")
+    st.error("❌ Revisa los Secrets en Streamlit.")
     st.stop()
 
 # --- 2. CONFIGURACIÓN ---
 PROJECT_ID = "subida-fotos-drive"
-GEMINI_LOCATION = "europe-west1"
+LOCATION = "europe-west1" # Región de Bélgica, la más estable para esto
 
-DATA_STORE_ID = "almacen-tasador-v2_1770407667877"
-DATA_STORE_LOCATION = "eu"
+vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
 
-vertexai.init(
-    project=PROJECT_ID,
-    location=GEMINI_LOCATION,
-    credentials=creds
-)
-
-# --- 3. TOOL CORRECTA (SOLO DATA STORE) ---
+# --- 3. HERRAMIENTAS (Solo buscador de Google para este paso) ---
+# Vamos a probar PRIMERO que internet funciona. Si esto va, luego metemos tu Data Store.
 tools = [
-    Tool.from_retrieval(
-        grounding.Retrieval(
-            grounding.VertexAISearch(
-                datastore=DATA_STORE_ID,
-                project=PROJECT_ID,
-                location=DATA_STORE_LOCATION
-            )
-        )
+    Tool.from_google_search_retrieval(
+        grounding.GoogleSearchRetrieval()
     )
 ]
 
 # --- 4. MODELO ---
-model = GenerativeModel(
-    model_name="gemini-2.5-pro",
-    tools=tools
-)
+model = GenerativeModel(model_name="gemini-1.5-pro", tools=tools)
 
-# --- 5. INTERFAZ ---
-st.set_page_config(page_title="Tasador v2", layout="wide")
-st.title("🚜 Tasador IA: El Putomilagro")
+# --- 5. INTERFAZ SIMPLE ---
+st.title("🚜 Paso 1: Lista de Resultados")
 
-tractor = st.text_input("Modelo del tractor:", "John Deere 6150M")
+tractor = st.text_input("Modelo de tractor:", "John Deere 6150M")
 
-if st.button("Tasar ahora"):
-    with st.spinner("Buscando precios reales..."):
+if st.button("Buscar Anuncios"):
+    with st.spinner("Buscando en Milanuncios, Agriaffaires, etc..."):
         try:
-            prompt = (
-                f"Busca anuncios reales de {tractor} en España. "
-                "Devuélveme una tabla con columnas: "
-                "Modelo | Precio | Horas | Fuente (URL). "
-                "Usa solo datos reales y cita la fuente."
-            )
+            # Prompt directo para obtener una LISTA
+            prompt = f"Busca anuncios reales de {tractor} en venta en España. Dame una lista con el nombre del anuncio, el precio y el enlace."
+            
+            response = model.generate_content(prompt)
 
-            # 🔑 AQUÍ está la corrección real
-            response = model.generate_content(
-                prompt,
-                google_search=True
-            )
-
-            st.markdown("### 📊 Resultado")
-            st.write(response.text)
+            # Mostramos el resultado tal cual viene
+            st.markdown("### 📝 Resultados encontrados:")
+            if response.text:
+                st.write(response.text)
+            else:
+                # Si el texto directo falla, sacamos la parte cruda
+                st.write(response.candidates[0].content.parts[0].text)
 
         except Exception as e:
-            st.error(f"❌ Error en la búsqueda: {str(e)}")
-
-st.sidebar.info(f"Conectado al Data Store: {DATA_STORE_ID}")
+            st.error(f"❌ Fallo en el Paso 1: {str(e)}")
